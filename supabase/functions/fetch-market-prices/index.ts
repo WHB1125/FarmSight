@@ -7,21 +7,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-// Jiangsu cities
 const jiangsuCities = [
   "Nanjing", "Suzhou", "Wuxi", "Changzhou", "Zhenjiang",
   "Nantong", "Yangzhou", "Taizhou", "Xuzhou", "Huai'an",
   "Yancheng", "Lianyungang", "Suqian"
 ];
 
-// Simulate real-time price data (in production, this would call an external API)
-function generateMarketPrices(productName: string, basePrice: number) {
-  return jiangsuCities.map(city => ({
-    city,
-    price: (basePrice * (0.85 + Math.random() * 0.3)).toFixed(2),
-    market_name: `${city} Agricultural Market`,
-    date: new Date().toISOString().split('T')[0],
-  }));
+function generateMarketPrices(productName: string, basePrice: number, date: Date) {
+  return jiangsuCities.map(city => {
+    const cityVariation = (city.charCodeAt(0) % 20) / 100;
+    const dateVariation = (date.getDate() % 10) / 100;
+    const randomVariation = (Math.random() * 0.2) - 0.1;
+    const finalPrice = basePrice * (0.85 + cityVariation + dateVariation + randomVariation);
+    
+    return {
+      city,
+      price: Math.max(finalPrice, basePrice * 0.7).toFixed(2),
+      market_name: `${city} Agricultural Market`,
+      date: date.toISOString().split('T')[0],
+    };
+  });
 }
 
 const productBasePrices: Record<string, number> = {
@@ -35,6 +40,7 @@ const productBasePrices: Record<string, number> = {
   "Corn": 3.5,
   "Potatoes": 3.2,
   "Carrots": 4.0,
+  "Chicken": 18.5,
 };
 
 Deno.serve(async (req: Request) => {
@@ -52,36 +58,41 @@ Deno.serve(async (req: Request) => {
 
     const url = new URL(req.url);
     const action = url.searchParams.get("action") || "fetch";
+    const daysParam = url.searchParams.get("days");
+    const days = daysParam ? parseInt(daysParam) : 1;
 
-    if (action === "fetch") {
-      // Fetch all products
+    if (action === "fetch" || action === "generate-historical") {
       const { data: products, error: productsError } = await supabase
         .from("products")
         .select("*");
 
       if (productsError) throw productsError;
 
-      // Generate and store price data for all products
       const allPrices = [];
+      const today = new Date();
       
-      for (const product of products || []) {
-        const basePrice = productBasePrices[product.name] || 5.0;
-        const prices = generateMarketPrices(product.name, basePrice);
+      for (let dayOffset = 0; dayOffset < days; dayOffset++) {
+        const currentDate = new Date(today);
+        currentDate.setDate(today.getDate() - dayOffset);
         
-        for (const priceData of prices) {
-          allPrices.push({
-            product_id: product.id,
-            city: priceData.city,
-            market_name: priceData.market_name,
-            price: parseFloat(priceData.price),
-            price_unit: "CNY/kg",
-            date: priceData.date,
-            source: "FarmSight Market Data",
-          });
+        for (const product of products || []) {
+          const basePrice = productBasePrices[product.name] || 5.0;
+          const prices = generateMarketPrices(product.name, basePrice, currentDate);
+          
+          for (const priceData of prices) {
+            allPrices.push({
+              product_id: product.id,
+              city: priceData.city,
+              market_name: priceData.market_name,
+              price: parseFloat(priceData.price),
+              price_unit: "CNY/kg",
+              date: priceData.date,
+              source: "FarmSight Market Data",
+            });
+          }
         }
       }
 
-      // Insert new prices
       const { error: insertError } = await supabase
         .from("market_prices")
         .insert(allPrices);
@@ -93,6 +104,7 @@ Deno.serve(async (req: Request) => {
           success: true,
           message: "Market prices updated successfully",
           total_prices: allPrices.length,
+          days_generated: days,
         }),
         {
           headers: {

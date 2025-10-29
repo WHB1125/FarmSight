@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Bell, Search } from 'lucide-react';
+import { RefreshCw, Bell, Search, TrendingUp as ChartIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { PriceTrendChart } from './PriceTrendChart';
 
 interface Product {
   id: string;
@@ -8,6 +9,7 @@ interface Product {
   category: string;
   unit: string;
   description: string | null;
+  image_url: string | null;
 }
 
 interface MarketPrice {
@@ -34,6 +36,7 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'price-asc' | 'price-desc'>('name');
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
 
   const cities = [
     'Nanjing', 'Suzhou', 'Wuxi', 'Changzhou', 'Zhenjiang',
@@ -41,7 +44,7 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
     'Yancheng', 'Lianyungang', 'Suqian'
   ];
 
-  const categories = ['Vegetables', 'Fruits', 'Grains'];
+  const categories = ['Vegetables', 'Fruits', 'Grains', 'Meat'];
 
   useEffect(() => {
     loadData();
@@ -205,56 +208,83 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
           </select>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedProducts.map((productName) => {
-            const productPrices = groupedPrices[productName];
-            const avgPrice = getAveragePrice(productPrices);
-            const range = getPriceRange(productPrices);
-            const product = productPrices[0].product;
+        {selectedProduct ? (
+          <div>
+            <button
+              onClick={() => setSelectedProduct(null)}
+              className="mb-4 text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
+            >
+              ← Back to Products
+            </button>
+            <PriceTrendChart productName={selectedProduct} days={30} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sortedProducts.map((productName) => {
+              const productPrices = groupedPrices[productName];
+              const avgPrice = getAveragePrice(productPrices);
+              const range = getPriceRange(productPrices);
+              const product = productPrices[0].product;
 
-            return (
-              <div key={productName} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-bold text-gray-900 text-lg">{productName}</h3>
-                    <p className="text-sm text-gray-500">{product?.category}</p>
-                  </div>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
-                    {product?.unit}
-                  </span>
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Average Price:</span>
-                    <span className="text-xl font-bold text-gray-900">¥{avgPrice}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Range:</span>
-                    <span className="text-gray-900">¥{range.min} - ¥{range.max}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Markets:</span>
-                    <span className="text-gray-900">{productPrices.length}</span>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button className="flex-1 text-sm py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
-                    View Details
-                  </button>
-                  {userRole !== 'manager' && (
-                    <button className="p-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors">
-                      <Bell className="w-4 h-4" />
-                    </button>
+              return (
+                <div key={productName} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                  {product?.image_url && (
+                    <div className="relative h-40 w-full overflow-hidden bg-gray-100">
+                      <img
+                        src={product.image_url}
+                        alt={productName}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                  <div className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-lg">{productName}</h3>
+                        <p className="text-sm text-gray-500">{product?.category}</p>
+                      </div>
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                        {product?.unit}
+                      </span>
+                    </div>
 
-        {sortedProducts.length === 0 && (
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Average Price:</span>
+                        <span className="text-xl font-bold text-gray-900">¥{avgPrice}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Range:</span>
+                        <span className="text-gray-900">¥{range.min} - ¥{range.max}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Markets:</span>
+                        <span className="text-gray-900">{productPrices.length}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSelectedProduct(productName)}
+                        className="flex-1 text-sm py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium flex items-center justify-center gap-2"
+                      >
+                        <ChartIcon className="w-4 h-4" />
+                        View Trend
+                      </button>
+                      {userRole !== 'manager' && (
+                        <button className="p-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors">
+                          <Bell className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {!selectedProduct && sortedProducts.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500">No products found matching your filters.</p>
           </div>
