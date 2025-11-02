@@ -13,6 +13,38 @@ const jiangsuCities = [
   "Yancheng", "Lianyungang", "Suqian"
 ];
 
+const cityNameMapping: Record<string, string> = {
+  "Nanjing": "南京",
+  "Suzhou": "苏州",
+  "Wuxi": "无锡",
+  "Changzhou": "常州",
+  "Zhenjiang": "镇江",
+  "Nantong": "南通",
+  "Yangzhou": "扬州",
+  "Taizhou": "泰州",
+  "Xuzhou": "徐州",
+  "Huai'an": "淮安",
+  "Yancheng": "盐城",
+  "Lianyungang": "连云港",
+  "Suqian": "宿迁"
+};
+
+const productNameMapping: Record<string, string> = {
+  "Rice": "大米",
+  "Wheat": "小麦",
+  "Tomatoes": "西红柿",
+  "Cucumbers": "黄瓜",
+  "Cabbage": "白菜",
+  "Apples": "苹果",
+  "Pears": "梨",
+  "Corn": "玉米",
+  "Potatoes": "土豆",
+  "Carrots": "胡萝卜",
+  "Chicken": "鸡肉",
+  "Beef": "牛肉",
+  "Pork": "猪肉",
+};
+
 function generateMarketPrices(productName: string, basePrice: number, date: Date) {
   return jiangsuCities.map(city => {
     const cityVariation = (city.charCodeAt(0) % 20) / 100;
@@ -44,6 +76,60 @@ const productBasePrices: Record<string, number> = {
   "Beef": 45.0,
   "Pork": 28.0,
 };
+
+async function fetchExternalPriceData(productName: string, cityNameCn: string): Promise<number | null> {
+  try {
+    const apiUrl = `https://www.cnhnb.com/api/price/query?product=${encodeURIComponent(productNameCn)}&city=${encodeURIComponent(cityNameCn)}`;
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.price && typeof data.price === 'number') {
+        return data.price;
+      }
+    }
+  } catch (error) {
+    console.log(`Failed to fetch external price for ${productName} in ${cityNameCn}:`, error.message);
+  }
+  
+  return null;
+}
+
+async function getPriceForProduct(productName: string, city: string, basePrice: number, date: Date): Promise<{ city: string; price: string; market_name: string; date: string; source: string }> {
+  const cityNameCn = cityNameMapping[city] || city;
+  const productNameCn = productNameMapping[productName] || productName;
+  
+  let price: number;
+  let source = "FarmSight Market Data";
+  
+  const externalPrice = await fetchExternalPriceData(productNameCn, cityNameCn);
+  
+  if (externalPrice !== null) {
+    price = externalPrice;
+    source = "External API Data";
+  } else {
+    const cityVariation = (city.charCodeAt(0) % 20) / 100;
+    const dateVariation = (date.getDate() % 10) / 100;
+    const randomVariation = (Math.random() * 0.2) - 0.1;
+    price = Math.max(basePrice * (0.85 + cityVariation + dateVariation + randomVariation), basePrice * 0.7);
+  }
+  
+  return {
+    city,
+    price: price.toFixed(2),
+    market_name: `${city} Agricultural Market`,
+    date: date.toISOString().split('T')[0],
+    source,
+  };
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -92,18 +178,33 @@ Deno.serve(async (req: Request) => {
           
           for (const product of products || []) {
             const basePrice = productBasePrices[product.name] || 5.0;
-            const prices = generateMarketPrices(product.name, basePrice, currentDate);
             
-            for (const priceData of prices) {
-              allPrices.push({
-                product_id: product.id,
-                city: priceData.city,
-                market_name: priceData.market_name,
-                price: parseFloat(priceData.price),
-                price_unit: "CNY/kg",
-                date: priceData.date,
-                source: "FarmSight Market Data",
-              });
+            if (dayOffset === 0) {
+              for (const city of jiangsuCities) {
+                const priceData = await getPriceForProduct(product.name, city, basePrice, currentDate);
+                allPrices.push({
+                  product_id: product.id,
+                  city: priceData.city,
+                  market_name: priceData.market_name,
+                  price: parseFloat(priceData.price),
+                  price_unit: "CNY/kg",
+                  date: priceData.date,
+                  source: priceData.source,
+                });
+              }
+            } else {
+              const prices = generateMarketPrices(product.name, basePrice, currentDate);
+              for (const priceData of prices) {
+                allPrices.push({
+                  product_id: product.id,
+                  city: priceData.city,
+                  market_name: priceData.market_name,
+                  price: parseFloat(priceData.price),
+                  price_unit: "CNY/kg",
+                  date: priceData.date,
+                  source: "FarmSight Market Data",
+                });
+              }
             }
           }
         }
@@ -168,9 +269,9 @@ Deno.serve(async (req: Request) => {
       
       for (const product of products || []) {
         const basePrice = productBasePrices[product.name] || 5.0;
-        const prices = generateMarketPrices(product.name, basePrice, today);
         
-        for (const priceData of prices) {
+        for (const city of jiangsuCities) {
+          const priceData = await getPriceForProduct(product.name, city, basePrice, today);
           allPrices.push({
             product_id: product.id,
             city: priceData.city,
@@ -178,7 +279,7 @@ Deno.serve(async (req: Request) => {
             price: parseFloat(priceData.price),
             price_unit: "CNY/kg",
             date: priceData.date,
-            source: "FarmSight Market Data",
+            source: priceData.source,
           });
         }
       }
