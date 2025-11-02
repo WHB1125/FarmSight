@@ -75,7 +75,7 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
     try {
       setRefreshing(true);
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-market-prices?action=fetch`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-market-prices?action=generate-historical&days=30`,
         {
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,

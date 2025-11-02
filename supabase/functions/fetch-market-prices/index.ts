@@ -41,6 +41,8 @@ const productBasePrices: Record<string, number> = {
   "Potatoes": 3.2,
   "Carrots": 4.0,
   "Chicken": 18.5,
+  "Beef": 45.0,
+  "Pork": 28.0,
 };
 
 Deno.serve(async (req: Request) => {
@@ -68,28 +70,116 @@ Deno.serve(async (req: Request) => {
 
       if (productsError) throw productsError;
 
-      const allPrices = [];
       const today = new Date();
-      
-      for (let dayOffset = 0; dayOffset < days; dayOffset++) {
-        const currentDate = new Date(today);
-        currentDate.setDate(today.getDate() - dayOffset);
+      today.setHours(0, 0, 0, 0);
+
+      if (action === "generate-historical") {
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
         
-        for (const product of products || []) {
-          const basePrice = productBasePrices[product.name] || 5.0;
-          const prices = generateMarketPrices(product.name, basePrice, currentDate);
+        const { error: deleteError } = await supabase
+          .from("market_prices")
+          .delete()
+          .lt("date", thirtyDaysAgo.toISOString().split('T')[0]);
+
+        if (deleteError) throw deleteError;
+
+        const allPrices = [];
+        
+        for (let dayOffset = 0; dayOffset < days; dayOffset++) {
+          const currentDate = new Date(today);
+          currentDate.setDate(today.getDate() - dayOffset);
           
-          for (const priceData of prices) {
-            allPrices.push({
-              product_id: product.id,
-              city: priceData.city,
-              market_name: priceData.market_name,
-              price: parseFloat(priceData.price),
-              price_unit: "CNY/kg",
-              date: priceData.date,
-              source: "FarmSight Market Data",
-            });
+          for (const product of products || []) {
+            const basePrice = productBasePrices[product.name] || 5.0;
+            const prices = generateMarketPrices(product.name, basePrice, currentDate);
+            
+            for (const priceData of prices) {
+              allPrices.push({
+                product_id: product.id,
+                city: priceData.city,
+                market_name: priceData.market_name,
+                price: parseFloat(priceData.price),
+                price_unit: "CNY/kg",
+                date: priceData.date,
+                source: "FarmSight Market Data",
+              });
+            }
           }
+        }
+
+        const { error: insertError } = await supabase
+          .from("market_prices")
+          .insert(allPrices);
+
+        if (insertError) throw insertError;
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Historical market prices generated successfully",
+            total_prices: allPrices.length,
+            days_generated: days,
+          }),
+          {
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
+      const todayStr = today.toISOString().split('T')[0];
+      
+      const { data: existingPrices } = await supabase
+        .from("market_prices")
+        .select("id")
+        .eq("date", todayStr)
+        .limit(1);
+
+      if (existingPrices && existingPrices.length > 0) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Prices for today already exist",
+            skipped: true,
+          }),
+          {
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      
+      const { error: deleteError } = await supabase
+        .from("market_prices")
+        .delete()
+        .lt("date", thirtyDaysAgo.toISOString().split('T')[0]);
+
+      if (deleteError) throw deleteError;
+
+      const allPrices = [];
+      
+      for (const product of products || []) {
+        const basePrice = productBasePrices[product.name] || 5.0;
+        const prices = generateMarketPrices(product.name, basePrice, today);
+        
+        for (const priceData of prices) {
+          allPrices.push({
+            product_id: product.id,
+            city: priceData.city,
+            market_name: priceData.market_name,
+            price: parseFloat(priceData.price),
+            price_unit: "CNY/kg",
+            date: priceData.date,
+            source: "FarmSight Market Data",
+          });
         }
       }
 
@@ -102,9 +192,9 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Market prices updated successfully",
+          message: "Market prices updated successfully with rolling 30-day window",
           total_prices: allPrices.length,
-          days_generated: days,
+          date: todayStr,
         }),
         {
           headers: {
