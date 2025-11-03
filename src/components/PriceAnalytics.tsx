@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, BarChart3, PieChart } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, PieChart, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Product {
@@ -16,16 +16,28 @@ interface MarketPrice {
   product?: Product;
 }
 
+interface PricePrediction {
+  id: string;
+  product_name: string;
+  city: string;
+  predict_date: string;
+  predicted_price: number;
+  model_version: string;
+  created_at: string;
+}
+
 interface PriceAnalyticsProps {
   userRole: 'farmer' | 'manager' | 'retailer';
 }
 
 export function PriceAnalytics({ userRole }: PriceAnalyticsProps) {
   const [prices, setPrices] = useState<MarketPrice[]>([]);
+  const [predictions, setPredictions] = useState<PricePrediction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadPrices();
+    loadPredictions();
   }, []);
 
   async function loadPrices() {
@@ -54,6 +66,24 @@ export function PriceAnalytics({ userRole }: PriceAnalyticsProps) {
       console.error('Error loading prices:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadPredictions() {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data, error } = await supabase
+        .from('price_predictions')
+        .select('*')
+        .gte('predict_date', today)
+        .order('predict_date', { ascending: true })
+        .order('product_name', { ascending: true });
+
+      if (error) throw error;
+      setPredictions(data || []);
+    } catch (error) {
+      console.error('Error loading predictions:', error);
     }
   }
 
@@ -269,6 +299,50 @@ export function PriceAnalytics({ userRole }: PriceAnalyticsProps) {
             Price variance across cities suggests opportunities for regional distribution optimization.
             Monitor <strong>{priceTrends[0]?.product}</strong> closely due to high volatility.
           </p>
+        </div>
+      )}
+
+      {predictions.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-purple-100 rounded-xl">
+              <Sparkles className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">AI Price Predictions</h2>
+              <p className="text-gray-600 text-sm mt-1">XGBoost machine learning forecasts for next 3 days</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {predictions.map((pred) => (
+              <div key={pred.id} className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h4 className="font-bold text-gray-900">{pred.product_name}</h4>
+                    <p className="text-sm text-gray-600">{pred.city}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">{new Date(pred.predict_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold text-purple-600">¥{pred.predicted_price.toFixed(2)}</p>
+                  <p className="text-sm text-gray-500">/kg</p>
+                </div>
+                <div className="mt-3 pt-3 border-t border-purple-200">
+                  <p className="text-xs text-gray-500">Model: {pred.model_version}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <p className="text-sm text-gray-700">
+              <strong>Note:</strong> These predictions are generated using historical price data and machine learning algorithms.
+              Actual prices may vary based on market conditions, weather, and supply chain factors.
+            </p>
+          </div>
         </div>
       )}
     </div>
