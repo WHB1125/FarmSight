@@ -24,7 +24,7 @@ export function ManagerDashboard() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">FarmSight</h1>
-              <p className="text-sm text-gray-600">Manager Dashboard</p>
+              <p className="text-sm text-gray-600">Retailer Dashboard</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
