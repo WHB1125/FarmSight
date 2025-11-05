@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Leaf, TrendingUp, Package, DollarSign, LogOut, BarChart } from 'lucide-react';
+import { TrendingUp, Package, DollarSign, LogOut, BarChart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { PriceMonitor } from '../components/PriceMonitor';
 import { PriceAnalytics } from '../components/PriceAnalytics';
@@ -19,9 +19,7 @@ export function FarmerDashboard() {
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center">
-            <div className="bg-green-100 p-3 rounded-xl mr-4">
-              <Leaf className="w-6 h-6 text-green-600" />
-            </div>
+            <img src="/image.png" alt="FarmSight Logo" className="w-12 h-12 mr-4" />
             <div>
               <h1 className="text-2xl font-bold text-gray-900">FarmSight</h1>
               <p className="text-sm text-gray-600">Farmer Dashboard</p>
