@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Bell, Search, TrendingUp as ChartIcon } from 'lucide-react';
+import { RefreshCw, Bell, Search, TrendingUp as ChartIcon, Heart } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { PriceTrendChart } from './PriceTrendChart';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Product {
   id: string;
@@ -29,6 +30,7 @@ interface PriceMonitorProps {
 }
 
 export function PriceMonitor({ userRole }: PriceMonitorProps) {
+  const { profile } = useAuth();
   const [prices, setPrices] = useState<MarketPrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,6 +39,8 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'price-asc' | 'price-desc'>('name');
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [favoriteIds, setFavoriteIds] = useState<Map<string, string>>(new Map());
 
   const cities = [
     'Nanjing', 'Suzhou', 'Wuxi', 'Changzhou', 'Zhenjiang',
@@ -48,6 +52,7 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
 
   useEffect(() => {
     loadData();
+    loadFavorites();
   }, []);
 
   async function loadData() {
@@ -68,6 +73,90 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadFavorites() {
+    if (!profile?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_favorites')
+        .select('id, product_id');
+
+      if (error) throw error;
+
+      const favSet = new Set<string>();
+      const favMap = new Map<string, string>();
+
+      data?.forEach(fav => {
+        favSet.add(fav.product_id);
+        favMap.set(fav.product_id, fav.id);
+      });
+
+      setFavorites(favSet);
+      setFavoriteIds(favMap);
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+    }
+  }
+
+  async function toggleFavorite(productId: string, productName: string) {
+    if (!profile?.id) return;
+
+    try {
+      const isFavorited = favorites.has(productId);
+
+      if (isFavorited) {
+        const favoriteId = favoriteIds.get(productId);
+        if (favoriteId) {
+          const { error } = await supabase
+            .from('user_favorites')
+            .delete()
+            .eq('id', favoriteId);
+
+          if (error) throw error;
+
+          const newFavorites = new Set(favorites);
+          newFavorites.delete(productId);
+          setFavorites(newFavorites);
+
+          const newFavoriteIds = new Map(favoriteIds);
+          newFavoriteIds.delete(productId);
+          setFavoriteIds(newFavoriteIds);
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('user_favorites')
+          .insert({
+            user_id: profile.id,
+            product_id: productId,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const newFavorites = new Set(favorites);
+        newFavorites.add(productId);
+        setFavorites(newFavorites);
+
+        const newFavoriteIds = new Map(favoriteIds);
+        newFavoriteIds.set(productId, data.id);
+        setFavoriteIds(newFavoriteIds);
+
+        await supabase
+          .from('user_history')
+          .upsert({
+            user_id: profile.id,
+            product_id: productId,
+            viewed_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id,product_id',
+          });
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
     }
   }
 
@@ -270,6 +359,17 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
                       >
                         <ChartIcon className="w-4 h-4" />
                         View Trend
+                      </button>
+                      <button
+                        onClick={() => toggleFavorite(product?.id || '', productName)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          favorites.has(product?.id || '')
+                            ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                        title={favorites.has(product?.id || '') ? 'Unfavorite' : 'Favorite'}
+                      >
+                        <Heart className={`w-4 h-4 ${favorites.has(product?.id || '') ? 'fill-current' : ''}`} />
                       </button>
                       {userRole !== 'manager' && (
                         <button className="p-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors">
