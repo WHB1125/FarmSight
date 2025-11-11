@@ -12,9 +12,21 @@ export default function PricePredict() {
     setResult(null);
     try {
       // ✅ 1️⃣ 调用 Edge Function 获取特征向量
-      const res = await fetch(
-        `https://qhnztjjepgewzmimlhkn.supabase.co/functions/v1/predict-onnx?action=features&product=${product}&city=${city}`
-      );
+     const res = await fetch(
+  "https://qhnztjjepgewzmimlhkn.supabase.co/functions/v1/predict-onnx",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      product,
+      city,
+      days: 3,
+    }),
+  }
+);
+
       const j = await res.json();
 
       if (!res.ok || !j.feature_vector) {
