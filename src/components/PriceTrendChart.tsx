@@ -13,10 +13,14 @@ interface PriceTrendChartProps {
   days?: number;
 }
 
-export function PriceTrendChart({ productName, days = 30 }: PriceTrendChartProps) {
+export function PriceTrendChart({ productName, days = 7 }: PriceTrendChartProps) {
   const [trendData, setTrendData] = useState<PriceTrendData[]>([]);
   const [loading, setLoading] = useState(true);
   const [productImage, setProductImage] = useState<string>('');
+  const [productId, setProductId] = useState<string>('');
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedDatePrice, setSelectedDatePrice] = useState<number | null>(null);
 
   useEffect(() => {
     loadTrendData();
@@ -34,6 +38,7 @@ export function PriceTrendChart({ productName, days = 30 }: PriceTrendChartProps
 
       if (!product) return;
       setProductImage(product.image_url || '');
+      setProductId(product.id);
 
       const endDate = new Date();
       const startDate = new Date();
@@ -134,7 +139,7 @@ export function PriceTrendChart({ productName, days = 30 }: PriceTrendChartProps
             <h3 className="text-2xl font-bold text-gray-900">{productName} Price Trend</h3>
             <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
               <Calendar className="w-4 h-4" />
-              Last {days} days
+              Last 7 days
             </p>
           </div>
         </div>
@@ -144,6 +149,13 @@ export function PriceTrendChart({ productName, days = 30 }: PriceTrendChartProps
             {totalChange >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span className="font-semibold">{totalChange >= 0 ? '+' : ''}{percentChange}%</span>
           </div>
+          <button
+            onClick={() => setShowCalendar(!showCalendar)}
+            className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
+          >
+            <Calendar className="w-4 h-4" />
+            Check Date Price
+          </button>
         </div>
       </div>
 
@@ -231,6 +243,61 @@ export function PriceTrendChart({ productName, days = 30 }: PriceTrendChartProps
           <span className="text-gray-600">Price Decrease</span>
         </div>
       </div>
+
+      {showCalendar && (
+        <div className="mt-6 border-t pt-6">
+          <h4 className="text-lg font-semibold text-gray-900 mb-4">Select a Date to View Price</h4>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={async (e) => {
+                const date = e.target.value;
+                setSelectedDate(date);
+
+                if (date && productId) {
+                  try {
+                    const { data, error } = await supabase
+                      .from('market_prices')
+                      .select('price')
+                      .eq('product_id', productId)
+                      .eq('date', date);
+
+                    if (error) throw error;
+
+                    if (data && data.length > 0) {
+                      const avgPrice = data.reduce((sum, item) => sum + item.price, 0) / data.length;
+                      setSelectedDatePrice(avgPrice);
+                    } else {
+                      setSelectedDatePrice(null);
+                    }
+                  } catch (error) {
+                    console.error('Error fetching price for date:', error);
+                    setSelectedDatePrice(null);
+                  }
+                }
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {selectedDate && (
+              <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200">
+                <p className="text-sm text-gray-600 mb-2">
+                  Price on {new Date(selectedDate).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+                {selectedDatePrice !== null ? (
+                  <p className="text-2xl font-bold text-gray-900">¥{selectedDatePrice.toFixed(2)}</p>
+                ) : (
+                  <p className="text-gray-500">No price data available for this date</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
