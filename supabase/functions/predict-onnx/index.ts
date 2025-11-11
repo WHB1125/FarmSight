@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import * as ort from "npm:onnxruntime-node@1.16.3";
+import * as ort from "npm:onnxruntime-web@1.17.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,29 +94,6 @@ async function getHistoricalData(
   });
 
   return result.sort((a, b) => a.date.localeCompare(b.date));
-}
-
-function createFeatures(data: HistoricalData[]): number[][] {
-  const features: number[][] = [];
-
-  for (let i = 3; i < data.length; i++) {
-    const currentDate = new Date(data[i].date);
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth() + 1;
-    const dayOfWeek = currentDate.getDay();
-    const day = currentDate.getDate();
-
-    const priceLag1 = data[i - 1].avg_price;
-    const priceLag2 = data[i - 2].avg_price;
-    const priceLag3 = data[i - 3].avg_price;
-
-    const rolling7 = data.slice(Math.max(0, i - 6), i + 1).reduce((sum, d) => sum + d.avg_price, 0) / Math.min(7, i + 1);
-    const rolling14 = data.slice(Math.max(0, i - 13), i + 1).reduce((sum, d) => sum + d.avg_price, 0) / Math.min(14, i + 1);
-
-    features.push([year, month, dayOfWeek, day, priceLag1, priceLag2, priceLag3, rolling7, rolling14]);
-  }
-
-  return features;
 }
 
 function addDays(date: Date, days: number): Date {
