@@ -77,10 +77,10 @@ const productBasePrices: Record<string, number> = {
   "Pork": 28.0,
 };
 
-async function fetchExternalPriceData(productName: string, cityNameCn: string): Promise<number | null> {
+async function fetchExternalPriceData(productNameCn: string, cityNameCn: string): Promise<number | null> {
   try {
     const apiUrl = `https://www.cnhnb.com/api/price/query?product=${encodeURIComponent(productNameCn)}&city=${encodeURIComponent(cityNameCn)}`;
-    
+
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
@@ -92,16 +92,17 @@ async function fetchExternalPriceData(productName: string, cityNameCn: string): 
 
     if (response.ok) {
       const data = await response.json();
-      if (data && data.price && typeof data.price === 'number') {
+      if (data && typeof data.price === 'number') {
         return data.price;
       }
     }
   } catch (error) {
-    console.log(`Failed to fetch external price for ${productName} in ${cityNameCn}:`, error.message);
+    console.log(`Failed to fetch external price for ${productNameCn} in ${cityNameCn}:`, error.message);
   }
-  
+
   return null;
 }
+
 
 async function getPriceForProduct(productName: string, city: string, basePrice: number, date: Date): Promise<{ city: string; price: string; market_name: string; date: string; source: string }> {
   const cityNameCn = cityNameMapping[city] || city;
