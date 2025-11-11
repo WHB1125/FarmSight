@@ -29,12 +29,12 @@ export default function PricePredict() {
     try {
       console.log('🔍 Fetching feature vector...');
 
-      // 1. 调用 Edge Function 获取特征向量
+      // 1. 调用 Edge Function 获取 35 维特征向量
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
       const featureResponse = await fetch(
-        `${supabaseUrl}/functions/v1/predict-features`,
+        `${supabaseUrl}/functions/v1/predict-onnx`,
         {
           method: 'POST',
           headers: {
@@ -50,8 +50,9 @@ export default function PricePredict() {
         throw new Error(errorData.error || 'Failed to fetch features');
       }
 
-      const { feature_vector } = await featureResponse.json();
-      console.log('✅ Feature vector received:', feature_vector);
+      const { feature_vector, schema } = await featureResponse.json();
+      console.log(`✅ Feature vector received: ${feature_vector.length} dimensions`);
+      console.log('Schema:', schema);
 
       // 2. 加载 ONNX 模型
       console.log('🔄 Loading ONNX model...');
@@ -70,9 +71,14 @@ export default function PricePredict() {
       let currentFeatures = [...feature_vector];
       const today = new Date();
 
+      // 特征向量结构：[9个数值特征, 13个产品one-hot, 13个城市one-hot] = 35维
+      const numericFeaturesCount = 9;
+      const productOneHotStart = 9;
+      const cityOneHotStart = 22;
+
       for (let i = 1; i <= 7; i++) {
-        // 创建输入张量
-        const inputTensor = new ort.Tensor('float32', new Float32Array(currentFeatures), [1, 9]);
+        // 创建输入张量 - 使用 35 维特征
+        const inputTensor = new ort.Tensor('float32', new Float32Array(currentFeatures), [1, schema.transformed_dim]);
 
         // 运行推理 - 使用动态检测到的输入名称
         const feeds = { [inputName]: inputTensor };
@@ -90,8 +96,8 @@ export default function PricePredict() {
           price: Math.max(0, predictedPrice), // 确保价格非负
         });
 
-        // 更新特征向量用于下一次预测
-        currentFeatures = [
+        // 更新数值特征（前9个）用于下一次预测
+        const newNumericFeatures = [
           predictedPrice,  // new lag_1
           currentFeatures[0],  // new lag_3 (previous lag_1)
           currentFeatures[1],  // new lag_7 (previous lag_3)
@@ -101,6 +107,13 @@ export default function PricePredict() {
           predDate.getDay(),  // new dow
           predDate.getDate(),  // new dom
           predDate.getMonth() + 1,  // new month
+        ];
+
+        // 保持产品和城市的 one-hot 编码不变
+        currentFeatures = [
+          ...newNumericFeatures,
+          ...currentFeatures.slice(productOneHotStart, cityOneHotStart),  // 产品 one-hot
+          ...currentFeatures.slice(cityOneHotStart),  // 城市 one-hot
         ];
       }
 
