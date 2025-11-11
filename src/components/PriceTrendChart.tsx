@@ -34,6 +34,7 @@ export function PriceTrendChart({ productName, days = 7 }: PriceTrendChartProps)
         .from('products')
         .select('id, image_url')
         .eq('name', productName)
+        .limit(1)
         .maybeSingle();
 
       if (!product) return;
