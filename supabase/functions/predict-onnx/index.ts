@@ -2,33 +2,12 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import * as ort from "npm:onnxruntime-web@1.17.0";
 
-// ✅ 加载 feature_spec.json
-let featureSpecCache: any = null;
-
-async function loadFeatureSpec() {
-  if (featureSpecCache) return featureSpecCache;
-
-  const specUrl = Deno.env.get("FEATURE_SPEC_URL");
-  if (!specUrl) throw new Error("Missing FEATURE_SPEC_URL environment variable");
-
-  console.log("🔍 Fetching feature spec from:", specUrl);
-  const res = await fetch(specUrl);
-  if (!res.ok) throw new Error(`Failed to fetch feature spec: ${res.status}`);
-
-  const spec = await res.json();
-  featureSpecCache = spec;
-  console.log("✅ Feature spec loaded successfully");
-  return spec;
-}
-
-// ✅ 定义全局 CORS
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-// ✅ 定义类型
 interface PredictionRequest {
   product: string;
   city: string;
@@ -40,29 +19,40 @@ interface HistoricalData {
   avg_price: number;
 }
 
-// ✅ 缓存模型
 let cachedSession: ort.InferenceSession | null = null;
 
-// ✅ 加载模型
 async function loadONNXModel(): Promise<ort.InferenceSession> {
-  if (cachedSession) return cachedSession;
+  if (cachedSession) {
+    return cachedSession;
+  }
 
-  console.log("🔄 Loading ONNX model from Supabase Storage...");
+  console.log("Loading ONNX model from Supabase Storage...");
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  const { data, error } = await supabase.storage.from("model").download("model.onnx");
-  if (error) throw new Error(`❌ Failed to download model: ${error.message}`);
+  const { data, error } = await supabase.storage
+    .from("models")
+    .download("price_prediction_model.onnx");
 
-  const buffer = new Uint8Array(await data.arrayBuffer());
+  if (error) {
+    throw new Error(`Failed to download model: ${error.message}`);
+  }
+
+  const arrayBuffer = await data.arrayBuffer();
+  const buffer = new Uint8Array(arrayBuffer);
+
   cachedSession = await ort.InferenceSession.create(buffer);
-  console.log("✅ ONNX model loaded successfully");
+  console.log("✓ ONNX model loaded successfully");
+
   return cachedSession;
 }
 
-// ✅ 获取历史数据
-async function getHistoricalData(product: string, city: string): Promise<HistoricalData[]> {
+async function getHistoricalData(
+  product: string,
+  city: string
+): Promise<HistoricalData[]> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseKey);
@@ -73,7 +63,9 @@ async function getHistoricalData(product: string, city: string): Promise<Histori
     .eq("name", product)
     .maybeSingle();
 
-  if (productError || !productData) throw new Error(`Product '${product}' not found`);
+  if (productError || !productData) {
+    throw new Error(`Product '${product}' not found`);
+  }
 
   const { data: pricesData, error: pricesError } = await supabase
     .from("market_prices")
@@ -86,11 +78,12 @@ async function getHistoricalData(product: string, city: string): Promise<Histori
     throw new Error(`No historical data found for ${product} in ${city}`);
   }
 
-  // 按日期平均化
   const grouped = new Map<string, number[]>();
   pricesData.forEach((row) => {
     const date = row.date.split("T")[0];
-    if (!grouped.has(date)) grouped.set(date, []);
+    if (!grouped.has(date)) {
+      grouped.set(date, []);
+    }
     grouped.get(date)!.push(parseFloat(row.price));
   });
 
@@ -103,22 +96,115 @@ async function getHistoricalData(product: string, city: string): Promise<Histori
   return result.sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// ✅ 日期计算函数
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
   return result;
 }
 
-// ✅ 主预测逻辑
 async function predictPrices(
   session: ort.InferenceSession,
   data: HistoricalData[],
-  product: string,
-  city: string,
   days: number
 ): Promise<Array<{ date: string; price: number }>> {
-  const spec = await loadFeatureSpec();
   const predictions: Array<{ date: string; price: number }> = [];
   const lastDate = new Date(data[data.length - 1].date);
   const recentData = [...data.slice(-14)];
+
+  for (let dayOffset = 1; dayOffset <= days; dayOffset++) {
+    const predictDate = addDays(lastDate, dayOffset);
+    const year = predictDate.getFullYear();
+    const month = predictDate.getMonth() + 1;
+    const dayOfWeek = predictDate.getDay();
+    const day = predictDate.getDate();
+
+    let priceLag1, priceLag2, priceLag3;
+
+    if (dayOffset === 1) {
+      priceLag1 = recentData[recentData.length - 1].avg_price;
+      priceLag2 = recentData[recentData.length - 2].avg_price;
+      priceLag3 = recentData[recentData.length - 3].avg_price;
+    } else {
+      priceLag1 = predictions.length > 0 ? predictions[predictions.length - 1].price : recentData[recentData.length - 1].avg_price;
+      priceLag2 = predictions.length > 1 ? predictions[predictions.length - 2].price : recentData[recentData.length - 2].avg_price;
+      priceLag3 = predictions.length > 2 ? predictions[predictions.length - 3].price : recentData[recentData.length - 3].avg_price;
+    }
+
+    const rolling7 = recentData.slice(-7).reduce((sum, d) => sum + d.avg_price, 0) / Math.min(7, recentData.length);
+    const rolling14 = recentData.reduce((sum, d) => sum + d.avg_price, 0) / recentData.length;
+
+    const inputData = new Float32Array([year, month, dayOfWeek, day, priceLag1, priceLag2, priceLag3, rolling7, rolling14]);
+    const tensor = new ort.Tensor("float32", inputData, [1, 9]);
+
+    const feeds = { float_input: tensor };
+    const results = await session.run(feeds);
+
+    const output = results.variable;
+    const predictedPrice = output.data[0] as number;
+
+    const dateStr = predictDate.toISOString().split("T")[0];
+    predictions.push({
+      date: dateStr,
+      price: Math.round(predictedPrice * 100) / 100,
+    });
+
+    recentData.push({ date: dateStr, avg_price: predictedPrice });
+  }
+
+  return predictions;
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    const { product, city, days = 3 }: PredictionRequest = await req.json();
+
+    if (!product || !city) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Missing required fields: product, city",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const session = await loadONNXModel();
+    const historicalData = await getHistoricalData(product, city);
+    const predictions = await predictPrices(session, historicalData, days);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        product,
+        city,
+        predictions,
+        model_version: "ONNX-XGBoost-v1.0",
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+});

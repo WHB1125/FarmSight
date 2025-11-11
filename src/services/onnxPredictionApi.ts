@@ -21,7 +21,7 @@ export interface OnnxPredictionResponse {
 export const onnxPredictionApi = {
   async predictPrices(request: OnnxPredictionRequest): Promise<OnnxPredictionResponse> {
     try {
-      const { data, error } = await supabase.functions.invoke('simple-predict', {
+      const { data, error } = await supabase.functions.invoke('predict-onnx', {
         body: request,
       });
 
@@ -43,11 +43,11 @@ export const onnxPredictionApi = {
 
   async healthCheck(): Promise<boolean> {
     try {
-      const { data, error } = await supabase.functions.invoke('simple-predict', {
-        body: { product: 'Potatoes', city: 'Nanjing', days: 1 },
+      const { data, error } = await supabase.functions.invoke('predict-onnx', {
+        body: { product: 'test', city: 'test', days: 1 },
       });
 
-      return !error && data?.success;
+      return !error;
     } catch {
       return false;
     }

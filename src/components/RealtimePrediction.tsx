@@ -40,7 +40,7 @@ export default function RealtimePrediction() {
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Cpu size={16} />
-          <span>AI Prediction</span>
+          <span>ONNX Model</span>
         </div>
       </div>
 
