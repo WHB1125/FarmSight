@@ -59,6 +59,12 @@ export default function PricePredict() {
       const session = await ort.InferenceSession.create(modelUrl);
       console.log('✅ Model loaded successfully');
 
+      // 获取模型的输入和输出名称
+      const inputName = session.inputNames[0];
+      const outputName = session.outputNames[0];
+      console.log('Model input name:', inputName);
+      console.log('Model output name:', outputName);
+
       // 3. 准备输入数据并运行推理（7天预测）
       const results: PredictionResult[] = [];
       let currentFeatures = [...feature_vector];
@@ -68,12 +74,12 @@ export default function PricePredict() {
         // 创建输入张量
         const inputTensor = new ort.Tensor('float32', new Float32Array(currentFeatures), [1, 9]);
 
-        // 运行推理
-        const feeds = { float_input: inputTensor };
+        // 运行推理 - 使用动态检测到的输入名称
+        const feeds = { [inputName]: inputTensor };
         const output = await session.run(feeds);
 
-        // 获取预测价格
-        const predictedPrice = output.dense.data[0] as number;
+        // 获取预测价格 - 使用动态检测到的输出名称
+        const predictedPrice = output[outputName].data[0] as number;
 
         // 计算预测日期
         const predDate = new Date(today);
