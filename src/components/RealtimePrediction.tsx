@@ -1,20 +1,23 @@
 import { useState } from 'react';
-import { TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
-import { predictionApi, PredictionResponse } from '../services/predictionApi';
+import { TrendingUp, AlertCircle, Loader2, Cpu } from 'lucide-react';
+import { onnxPredictionApi, OnnxPredictionResponse } from '../services/onnxPredictionApi';
+
+type PredictionMode = 'onnx' | 'api';
 
 export default function RealtimePrediction() {
   const [product, setProduct] = useState('Potatoes');
   const [city, setCity] = useState('Nanjing');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [predictions, setPredictions] = useState<PredictionResponse | null>(null);
+  const [predictions, setPredictions] = useState<OnnxPredictionResponse | null>(null);
+  const [mode] = useState<PredictionMode>('onnx');
 
   const handlePredict = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const result = await predictionApi.predictPrices({
+      const result = await onnxPredictionApi.predictPrices({
         product,
         city,
         days: 3,
@@ -30,9 +33,15 @@ export default function RealtimePrediction() {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <TrendingUp className="text-blue-600" size={24} />
-        <h2 className="text-2xl font-bold text-gray-800">Real-time Price Prediction</h2>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="text-blue-600" size={24} />
+          <h2 className="text-2xl font-bold text-gray-800">Real-time Price Prediction</h2>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Cpu size={16} />
+          <span>ONNX Model</span>
+        </div>
       </div>
 
       <div className="space-y-4 mb-6">
