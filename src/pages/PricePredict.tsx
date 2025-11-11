@@ -13,7 +13,7 @@ export default function PricePredict() {
     try {
       // 1️⃣ 获取特征向量
       const res = await fetch(
-        `https://<https://qhnztjjepgewzmimlhkn.supabase.co/functions/v1/predict-onnx>?action=features&product=${product}&city=${city}`
+        `https://qhnztjjepgewzmimlhkn.supabase.co/functions/v1/predict-onnx>?action=features&product=${product}&city=${city}`
       );
       const j = await res.json();
 
