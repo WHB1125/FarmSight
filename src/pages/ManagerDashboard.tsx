@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { BarChart3, LogOut, UserCircle } from 'lucide-react';
+import { BarChart3, LogOut, UserCircle, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { PriceMonitor } from '../components/PriceMonitor';
 import { PriceAnalytics } from '../components/PriceAnalytics';
 import { UserCenter } from '../components/UserCenter';
 import { AIChatbot } from '../components/AIChatbot';
+import { ONNXPredictor } from '../components/ONNXPredictor';
 
 export function ManagerDashboard() {
   const { profile, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<'prices' | 'analytics' | 'profile'>('prices');
+  const [activeTab, setActiveTab] = useState<'prices' | 'analytics' | 'predictor' | 'profile'>('prices');
 
 
   return (
@@ -62,6 +63,17 @@ export function ManagerDashboard() {
             Analytics
           </button>
           <button
+            onClick={() => setActiveTab('predictor')}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'predictor'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            ONNX Predictor
+          </button>
+          <button
             onClick={() => setActiveTab('profile')}
             className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
               activeTab === 'profile'
@@ -77,6 +89,8 @@ export function ManagerDashboard() {
         {activeTab === 'prices' && <PriceMonitor userRole="manager" />}
 
         {activeTab === 'analytics' && <PriceAnalytics userRole="manager" />}
+
+        {activeTab === 'predictor' && <ONNXPredictor />}
 
         {activeTab === 'profile' && <UserCenter onViewProduct={(productId) => setActiveTab('prices')} />}
       </main>
