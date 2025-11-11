@@ -14,7 +14,7 @@ export default function PricePredict() {
   const [error, setError] = useState<string | null>(null);
   const [predictions, setPredictions] = useState<PredictionResult[]>([]);
 
-  const products = ['Pork', 'Beef', 'Chicken', 'Rice', 'Cabbage', 'Apples'];
+  const products = ['Pork', 'Beef', 'Chicken', 'Rice', 'Cabbage', 'Apples', 'Wheat', 'Tomatoes', 'Cucumbers', 'Potatoes', 'Carrots', 'Corn', 'Pears'];
   const cities = ['Nanjing', 'Suzhou', 'Wuxi', 'Changzhou', 'Xuzhou', 'Nantong', 'Yangzhou', 'Taizhou'];
 
   useEffect(() => {
