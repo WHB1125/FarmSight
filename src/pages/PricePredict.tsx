@@ -11,18 +11,25 @@ export default function PricePredict() {
     setLoading(true);
     setResult(null);
     try {
-      // 1️⃣ 获取特征向量
+      // ✅ 1️⃣ 调用 Edge Function 获取特征向量
       const res = await fetch(
-        `https://qhnztjjepgewzmimlhkn.supabase.co/functions/v1/predict-onnx>?action=features&product=${product}&city=${city}`
+        `https://qhnztjjepgewzmimlhkn.supabase.co/functions/v1/predict-onnx?action=features&product=${product}&city=${city}`
       );
       const j = await res.json();
 
-      // 2️⃣ 加载 ONNX 模型
+      if (!res.ok || !j.feature_vector) {
+        console.error("Feature fetch failed:", j);
+        alert("无法获取特征数据，请检查 Edge Function 返回内容");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ 2️⃣ 加载 ONNX 模型（来自 Supabase Storage）
       const session = await ort.InferenceSession.create(
         "https://qhnztjjepgewzmimlhkn.supabase.co/storage/v1/object/public/model/model.onnx"
       );
 
-      // 3️⃣ 构建输入张量并预测
+      // ✅ 3️⃣ 构建输入张量并执行预测
       const inputTensor = new ort.Tensor(
         "float32",
         Float32Array.from(j.feature_vector),
@@ -32,10 +39,11 @@ export default function PricePredict() {
       const output = await session.run({ input: inputTensor });
       const outName = Object.keys(output)[0];
       const pred = output[outName].data[0];
+
       setResult(pred);
     } catch (err) {
       console.error("Prediction error:", err);
-      alert("预测失败，请检查 Edge Function 是否部署成功");
+      alert("预测失败，请检查 Edge Function 是否部署成功或 CORS 设置");
     } finally {
       setLoading(false);
     }
