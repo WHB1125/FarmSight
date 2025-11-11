@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { PriceMonitor } from '../components/PriceMonitor';
 import { PriceAnalytics } from '../components/PriceAnalytics';
 import { UserCenter } from '../components/UserCenter';
+import { AIChatbot } from '../components/AIChatbot';
 
 export function FarmerDashboard() {
   const { profile, signOut } = useAuth();
@@ -84,6 +85,7 @@ export function FarmerDashboard() {
 
         {activeTab === 'profile' && <UserCenter onViewProduct={(productId) => setActiveTab('prices')} />}
       </main>
+      <AIChatbot />
     </div>
   );
 }
