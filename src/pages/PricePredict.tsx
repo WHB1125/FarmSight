@@ -280,57 +280,6 @@ export default function PricePredict() {
                 </tbody>
               </table>
             </div>
-
-            {/* 简单的可视化 */}
-            <div className="mt-8 p-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-lg border border-green-200">
-              <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-                Price Trend Visualization
-              </h3>
-              <div className="relative">
-                {/* 价格范围参考线 */}
-                <div className="absolute left-0 right-0 h-48 flex flex-col justify-between text-xs text-gray-500 pointer-events-none">
-                  <span>¥{Math.max(...predictions.map(p => p.price)).toFixed(1)}</span>
-                  <span>¥{(Math.max(...predictions.map(p => p.price)) * 0.5 + Math.min(...predictions.map(p => p.price)) * 0.5).toFixed(1)}</span>
-                  <span>¥{Math.min(...predictions.map(p => p.price)).toFixed(1)}</span>
-                </div>
-
-                {/* 柱状图 */}
-                <div className="flex items-end justify-between h-48 gap-2 pl-12">
-                  {predictions.map((pred, idx) => {
-                    const maxPrice = Math.max(...predictions.map((p) => p.price));
-                    const minPrice = Math.min(...predictions.map((p) => p.price));
-                    const range = maxPrice - minPrice;
-                    // 如果价格波动很小，使用固定高度；否则按比例缩放
-                    const heightPercent = range > 0.1
-                      ? ((pred.price - minPrice) / range) * 80 + 20  // 20-100% 范围
-                      : 70; // 价格稳定时的默认高度
-
-                    return (
-                      <div key={pred.date} className="flex-1 flex flex-col items-center gap-2 group">
-                        <div className="text-xs font-bold text-green-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                          ¥{pred.price.toFixed(2)}
-                        </div>
-                        <div
-                          className="w-full bg-gradient-to-t from-green-600 to-green-400 rounded-t-lg transition-all duration-300 hover:from-green-700 hover:to-green-500 shadow-lg hover:shadow-xl cursor-pointer"
-                          style={{ height: `${heightPercent}%` }}
-                          title={`${pred.date}: ¥${pred.price.toFixed(2)}`}
-                        />
-                        <div className="text-xs text-gray-700 font-medium text-center mt-1">
-                          {new Date(pred.date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Day {idx + 1}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
