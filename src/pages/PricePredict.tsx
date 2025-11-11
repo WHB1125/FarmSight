@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TrendingUp, Calendar, MapPin, Loader, AlertCircle } from 'lucide-react';
 import * as ort from 'onnxruntime-web';
 
@@ -16,6 +16,10 @@ export default function PricePredict() {
 
   const products = ['Pork', 'Beef', 'Chicken', 'Rice', 'Cabbage', 'Apples'];
   const cities = ['Nanjing', 'Suzhou', 'Wuxi', 'Changzhou', 'Xuzhou', 'Nantong', 'Yangzhou', 'Taizhou'];
+
+  useEffect(() => {
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
+  }, []);
 
   const handlePredict = async () => {
     setPredicting(true);
