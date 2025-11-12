@@ -20,9 +20,12 @@ export function FarmerDashboard() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">FarmSight</h1>
-            <p className="text-sm text-gray-600">Farmer Dashboard</p>
+          <div className="flex items-center">
+            <img src="/image copy.png" alt="FarmSight Logo" className="w-12 h-12 mr-4" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">FarmSight</h1>
+              <p className="text-sm text-gray-600">Farmer Dashboard</p>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
