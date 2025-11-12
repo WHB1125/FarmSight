@@ -47,8 +47,8 @@ export function SignupPage({ onNavigateToLogin }: { onNavigateToLogin: () => voi
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <div className="flex items-center justify-center mb-8">
-          <img src="/image copy.png" alt="FarmSight Logo" className="w-16 h-16 mr-4" />
-          <h1 className="text-4xl font-bold text-gray-900">FarmSight</h1>
+          <img src="/image copy.png" alt="JSAgriSmart Logo" className="w-16 h-16 mr-4" />
+          <h1 className="text-4xl font-bold text-gray-900">JSAgriSmart</h1>
         </div>
 
         <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Create Account</h2>

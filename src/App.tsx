@@ -38,7 +38,7 @@ function AppContent() {
     <div className="min-h-screen bg-gray-50">
       {/* 顶部导航栏 */}
       <nav className="bg-white shadow-md p-4 flex justify-between items-center">
-        <div className="text-xl font-bold text-green-700">🌾 FarmSight</div>
+        <div className="text-xl font-bold text-green-700">🌾 JSAgriSmart</div>
         <div className="flex gap-4">
           {profile.role === "farmer" && (
             <Link

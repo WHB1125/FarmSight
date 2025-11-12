@@ -28,7 +28,7 @@ export function AIChatbot() {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m the FarmSight AI Assistant. I can help you with product prices, market trends, and agricultural information. Try asking me about product prices!',
+      content: 'Hello! I\'m the JSAgriSmart AI Assistant. I can help you with product prices, market trends, and agricultural information. Try asking me about product prices!',
       timestamp: new Date(),
     },
   ]);
@@ -179,7 +179,7 @@ export function AIChatbot() {
                 <MessageCircle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-lg">FarmSight AI Assistant</h3>
+                <h3 className="font-bold text-lg">JSAgriSmart AI Assistant</h3>
                 <p className="text-xs text-green-100">Always here to help</p>
               </div>
             </div>
