@@ -38,6 +38,12 @@ export function ManagerDashboard() {
         </div>
       </header>
 
+      <div className="bg-blue-50 border-b border-blue-200 py-2">
+        <p className="text-center text-sm text-blue-800">
+          This is a test version, created by students of XJTLU, and it is for non-commercial use only.
+        </p>
+      </div>
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-2 mb-6">
           <button
