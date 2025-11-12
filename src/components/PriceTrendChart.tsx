@@ -245,6 +245,10 @@ export function PriceTrendChart({ productName, days = 7 }: PriceTrendChartProps)
         </div>
       </div>
 
+      <div className="mt-4 text-center text-xs text-gray-500">
+        Real-time prices are fetched from cnhnb.com.
+      </div>
+
       {showCalendar && (
         <div className="mt-6 border-t pt-6">
           <h4 className="text-lg font-semibold text-gray-900 mb-4">Select a Date to View Price</h4>
