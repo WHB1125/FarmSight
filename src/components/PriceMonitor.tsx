@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { RefreshCw, Bell, Search, TrendingUp as ChartIcon, Heart } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { PriceTrendChart } from './PriceTrendChart';
+import { RegionalMarketMap } from './RegionalMarketMap';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Product {
@@ -39,6 +40,7 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'price-asc' | 'price-desc'>('name');
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [selectedProductData, setSelectedProductData] = useState<{ id: string; unit: string } | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [favoriteIds, setFavoriteIds] = useState<Map<string, string>>(new Map());
 
@@ -298,14 +300,24 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
         </div>
 
         {selectedProduct ? (
-          <div>
+          <div className="space-y-6">
             <button
-              onClick={() => setSelectedProduct(null)}
+              onClick={() => {
+                setSelectedProduct(null);
+                setSelectedProductData(null);
+              }}
               className="mb-4 text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
             >
               ← Back to Products
             </button>
             <PriceTrendChart productName={selectedProduct} />
+            {selectedProductData && (
+              <RegionalMarketMap
+                productId={selectedProductData.id}
+                productName={selectedProduct}
+                unit={selectedProductData.unit}
+              />
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -354,7 +366,13 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
 
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setSelectedProduct(productName)}
+                        onClick={() => {
+                          setSelectedProduct(productName);
+                          setSelectedProductData({
+                            id: product?.id || '',
+                            unit: product?.unit || 'kg'
+                          });
+                        }}
                         className="flex-1 text-sm py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium flex items-center justify-center gap-2"
                       >
                         <ChartIcon className="w-4 h-4" />
