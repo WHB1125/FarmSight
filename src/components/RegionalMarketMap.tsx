@@ -131,7 +131,7 @@ export function RegionalMarketMap({ productId, productName, unit }: Props) {
       <div className="bg-white rounded-xl shadow-md p-8 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">正在加载区域市场数据...</p>
+          <p className="text-gray-600">Loading regional market data...</p>
         </div>
       </div>
     );
@@ -143,14 +143,14 @@ export function RegionalMarketMap({ productId, productName, unit }: Props) {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <MapPin className="w-6 h-6 text-green-600" />
-            区域市场分布 - {productName}
+            Regional Market Distribution - {productName}
           </h2>
           <p className="text-sm text-gray-600 mt-1">
-            江苏省 {Object.keys(cityPositions).length} 个城市共 {sellers.length} 家供应商
+            {sellers.length} sellers across {Object.keys(cityPositions).length} cities in Jiangsu Province
           </p>
         </div>
         <div className="text-right">
-          <p className="text-sm text-gray-600">区域平均价格</p>
+          <p className="text-sm text-gray-600">Regional Average Price</p>
           <p className="text-2xl font-bold text-green-600">
             ¥{globalAvgPrice.toFixed(2)} / {unit}
           </p>
@@ -208,15 +208,15 @@ export function RegionalMarketMap({ productId, productName, unit }: Props) {
             <div className="flex items-center justify-center gap-6 mt-4 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                <span className="text-gray-700">低价区</span>
+                <span className="text-gray-700">Low Price</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                <span className="text-gray-700">中价区</span>
+                <span className="text-gray-700">Medium Price</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                <span className="text-gray-700">高价区</span>
+                <span className="text-gray-700">High Price</span>
               </div>
             </div>
           </div>
@@ -226,12 +226,12 @@ export function RegionalMarketMap({ productId, productName, unit }: Props) {
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <Store className="w-4 h-4 text-green-600" />
-              {selectedCity ? `${cityPositions[selectedCity]?.cn || selectedCity} 供应商` : '所有供应商'}
+              {selectedCity ? `${selectedCity} Sellers` : 'All Sellers'}
             </h3>
 
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {filteredSellers.length === 0 ? (
-                <p className="text-sm text-gray-500">暂无供应商信息</p>
+                <p className="text-sm text-gray-500">No sellers available</p>
               ) : (
                 filteredSellers.map((seller) => {
                   const Icon = getSellerIcon(seller.seller_type);
@@ -256,7 +256,7 @@ export function RegionalMarketMap({ productId, productName, unit }: Props) {
                               {seller.seller_name}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {cityPositions[seller.city]?.cn || seller.city}
+                              {seller.city}
                             </p>
                           </div>
                         </div>
@@ -271,7 +271,7 @@ export function RegionalMarketMap({ productId, productName, unit }: Props) {
                               <TrendingUp className="w-3 h-3 text-red-600" />
                             )}
                             <span className={`text-xs ${isLowPrice ? 'text-green-600' : 'text-red-600'}`}>
-                              {isLowPrice ? '低于均价' : '高于均价'}
+                              {isLowPrice ? 'Below avg' : 'Above avg'}
                             </span>
                           </div>
                         </div>
@@ -302,7 +302,7 @@ export function RegionalMarketMap({ productId, productName, unit }: Props) {
               onClick={() => setSelectedCity(null)}
               className="w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
             >
-              显示所有城市
+              Show All Cities
             </button>
           )}
         </div>
