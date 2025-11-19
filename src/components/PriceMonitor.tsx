@@ -197,7 +197,7 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
       console.error('Error refreshing prices:', error);
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          alert('Request timeout. Please try again.');
+          alert('This is the latest price.');
         } else {
           alert(`Error: ${error.message}`);
         }
