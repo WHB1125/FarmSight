@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import { BarChart3, LogOut, UserCircle, Clock } from 'lucide-react';
+import { BarChart3, LogOut, UserCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { PriceMonitor } from '../components/PriceMonitor';
 import { PriceAnalytics } from '../components/PriceAnalytics';
 import { UserCenter } from '../components/UserCenter';
 import { AIChatbot } from '../components/AIChatbot';
-import { CronJobManager } from '../components/CronJobManager';
 
 export function ManagerDashboard() {
   const { profile, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<'prices' | 'analytics' | 'profile' | 'cron'>('prices');
+  const [activeTab, setActiveTab] = useState<'prices' | 'analytics' | 'profile'>('prices');
 
 
   return (
@@ -69,17 +68,6 @@ export function ManagerDashboard() {
             Analytics
           </button>
           <button
-            onClick={() => setActiveTab('cron')}
-            className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-              activeTab === 'cron'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <Clock className="w-4 h-4" />
-            Auto Updates
-          </button>
-          <button
             onClick={() => setActiveTab('profile')}
             className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
               activeTab === 'profile'
@@ -96,9 +84,7 @@ export function ManagerDashboard() {
 
         {activeTab === 'analytics' && <PriceAnalytics userRole="manager" />}
 
-        {activeTab === 'cron' && <CronJobManager />}
-
-        {activeTab === 'profile' && <UserCenter onViewProduct={() => setActiveTab('prices')} />}
+        {activeTab === 'profile' && <UserCenter onViewProduct={(productId) => setActiveTab('prices')} />}
       </main>
       <AIChatbot />
     </div>
