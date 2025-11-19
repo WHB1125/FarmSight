@@ -103,7 +103,7 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
     }
   }
 
-  async function toggleFavorite(productId: string, productName: string) {
+  async function toggleFavorite(productId: string) {
     if (!profile?.id) return;
 
     try {
@@ -165,20 +165,45 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
   async function refreshPrices() {
     try {
       setRefreshing(true);
+
+      // Create an abort controller with 60 second timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-market-prices?action=generate-historical&days=30`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-market-prices?action=fetch`,
         {
+          method: 'GET',
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
+          signal: controller.signal,
         }
       );
 
-      if (!response.ok) throw new Error('Failed to refresh prices');
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || 'Failed to refresh prices');
+      }
+
+      const result = await response.json();
+      console.log('Refresh result:', result);
 
       await loadData();
-    } catch (error) {
+      alert('Prices refreshed successfully!');
+    } catch (error: unknown) {
       console.error('Error refreshing prices:', error);
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          alert('Request timeout. Please try again.');
+        } else {
+          alert(`Error: ${error.message}`);
+        }
+      } else {
+        alert('An unexpected error occurred. Please try again.');
+      }
     } finally {
       setRefreshing(false);
     }
@@ -379,7 +404,7 @@ export function PriceMonitor({ userRole }: PriceMonitorProps) {
                         View Trend
                       </button>
                       <button
-                        onClick={() => toggleFavorite(product?.id || '', productName)}
+                        onClick={() => toggleFavorite(product?.id || '')}
                         className={`p-2 rounded-lg transition-colors ${
                           favorites.has(product?.id || '')
                             ? 'bg-red-100 text-red-600 hover:bg-red-200'
