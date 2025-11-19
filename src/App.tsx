@@ -7,6 +7,7 @@ import { FarmerDashboard } from "./pages/FarmerDashboard";
 import { ManagerDashboard } from "./pages/ManagerDashboard";
 import { RetailerDashboard } from "./pages/RetailerDashboard";
 import PricePredict from "./pages/PricePredict";
+import QRCodePage from "./pages/QRCodePage";
 
 function AppContent() {
   const { user, profile, loading } = useAuth();
@@ -70,6 +71,12 @@ function AppContent() {
           >
             AI Prediction
           </Link>
+          <Link
+            to="/qrcode"
+            className="text-gray-700 hover:text-green-600 font-medium"
+          >
+            QR Code
+          </Link>
         </div>
       </nav>
 
@@ -80,6 +87,7 @@ function AppContent() {
           <Route path="/manager" element={<ManagerDashboard />} />
           <Route path="/retailer" element={<RetailerDashboard />} />
           <Route path="/predict" element={<PricePredict />} />
+          <Route path="/qrcode" element={<QRCodePage />} />
           {/* 默认首页按角色跳转 */}
           <Route
             path="/"
@@ -103,7 +111,10 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <AppContent />
+        <Routes>
+          <Route path="/qrcode" element={<QRCodePage />} />
+          <Route path="/*" element={<AppContent />} />
+        </Routes>
       </Router>
     </AuthProvider>
   );
