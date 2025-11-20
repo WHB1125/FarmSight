@@ -70,7 +70,7 @@ export function FarmerDashboard() {
             }`}
           >
             <BarChart className="w-4 h-4" />
-            Analytics
+            Opportunities
           </button>
           <button
             onClick={() => setActiveTab('profile')}
