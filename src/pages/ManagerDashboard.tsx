@@ -65,7 +65,7 @@ export function ManagerDashboard() {
             }`}
           >
             <BarChart3 className="w-4 h-4" />
-            Analytics
+            Opportunities
           </button>
           <button
             onClick={() => setActiveTab('profile')}
