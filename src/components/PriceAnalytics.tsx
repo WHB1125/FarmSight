@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, BarChart3, PieChart, Calendar, MapPin, Loader, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, PieChart } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import * as ort from 'onnxruntime-web';
 
 interface Product {
   id: string;
@@ -21,27 +20,12 @@ interface PriceAnalyticsProps {
   userRole: 'farmer' | 'manager' | 'retailer';
 }
 
-interface PredictionResult {
-  date: string;
-  price: number;
-}
-
 export function PriceAnalytics({ userRole }: PriceAnalyticsProps) {
   const [prices, setPrices] = useState<MarketPrice[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [product, setProduct] = useState('Beef');
-  const [city, setCity] = useState('Nanjing');
-  const [predicting, setPredicting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [predictions, setPredictions] = useState<PredictionResult[]>([]);
-
-  const products = ['Pork', 'Beef', 'Chicken', 'Rice', 'Cabbage', 'Apples', 'Wheat', 'Tomatoes', 'Cucumbers', 'Potatoes', 'Carrots', 'Corn', 'Pears'];
-  const cities = ['Nanjing', 'Suzhou', 'Wuxi', 'Changzhou', 'Xuzhou', 'Nantong', 'Yangzhou', 'Taizhou'];
-
   useEffect(() => {
     loadPrices();
-    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
   }, []);
 
   async function loadPrices() {
@@ -167,97 +151,6 @@ export function PriceAnalytics({ userRole }: PriceAnalyticsProps) {
 
   const insights = getRoleSpecificInsights();
 
-  const handlePredict = async () => {
-    setPredicting(true);
-    setError(null);
-    setPredictions([]);
-
-    try {
-      console.log('🔍 Fetching feature vector...');
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      const featureResponse = await fetch(
-        `${supabaseUrl}/functions/v1/predict-onnx`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ product, city }),
-        }
-      );
-
-      if (!featureResponse.ok) {
-        const errorData = await featureResponse.json();
-        throw new Error(errorData.error || 'Failed to fetch features');
-      }
-
-      const { feature_vector, schema } = await featureResponse.json();
-      console.log(`✅ Feature vector received: ${feature_vector.length} dimensions`);
-
-      console.log('🔄 Loading ONNX model...');
-      const modelUrl = 'https://qhnztjjepgewzmimlhkn.supabase.co/storage/v1/object/public/model/model.onnx';
-      const session = await ort.InferenceSession.create(modelUrl);
-      console.log('✅ Model loaded successfully');
-
-      const inputName = session.inputNames[0];
-      const outputName = session.outputNames[0];
-
-      const results: PredictionResult[] = [];
-      let currentFeatures = [...feature_vector];
-      const today = new Date();
-
-      const numericFeaturesCount = 9;
-      const productOneHotStart = 9;
-      const cityOneHotStart = 22;
-
-      for (let i = 1; i <= 7; i++) {
-        const inputTensor = new ort.Tensor('float32', new Float32Array(currentFeatures), [1, schema.transformed_dim]);
-        const feeds = { [inputName]: inputTensor };
-        const output = await session.run(feeds);
-        const predictedPrice = output[outputName].data[0] as number;
-
-        const predDate = new Date(today);
-        predDate.setDate(predDate.getDate() + i);
-
-        results.push({
-          date: predDate.toISOString().split('T')[0],
-          price: Math.max(0, predictedPrice),
-        });
-
-        const newNumericFeatures = [
-          predictedPrice,
-          currentFeatures[0],
-          currentFeatures[1],
-          (currentFeatures[3] * 6 + predictedPrice) / 7,
-          currentFeatures[4],
-          (currentFeatures[5] * 9 + predictedPrice) / 10,
-          predDate.getDay(),
-          predDate.getDate(),
-          predDate.getMonth() + 1,
-        ];
-
-        currentFeatures = [
-          ...newNumericFeatures,
-          ...currentFeatures.slice(productOneHotStart, cityOneHotStart),
-          ...currentFeatures.slice(cityOneHotStart),
-        ];
-      }
-
-      console.log('✅ Predictions generated:', results);
-      setPredictions(results);
-
-    } catch (err: any) {
-      console.error('❌ Prediction error:', err);
-      setError(err.message || 'Failed to generate predictions');
-    } finally {
-      setPredicting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -271,140 +164,6 @@ export function PriceAnalytics({ userRole }: PriceAnalyticsProps) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-          <TrendingUp className="w-6 h-6 text-green-600" />
-          AI Price Prediction
-        </h2>
-
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-green-600" />
-              Agricultural Product
-            </label>
-            <select
-              value={product}
-              onChange={(e) => setProduct(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-              disabled={predicting}
-            >
-              {products.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-green-600" />
-              City / Market
-            </label>
-            <select
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-              disabled={predicting}
-            >
-              {cities.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <button
-          onClick={handlePredict}
-          disabled={predicting}
-          className="w-full md:w-auto px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 mb-6"
-        >
-          {predicting ? (
-            <>
-              <Loader className="w-5 h-5 animate-spin" />
-              Predicting...
-            </>
-          ) : (
-            <>
-              <TrendingUp className="w-5 h-5" />
-              Generate 7-Day Prediction
-            </>
-          )}
-        </button>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-red-900">Prediction Failed</h3>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
-            </div>
-          </div>
-        )}
-
-        {predictions.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-              7-Day Price Forecast for {product} in {city}
-            </h3>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Date</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Predicted Price</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Trend</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {predictions.map((pred, idx) => {
-                    const prevPrice = idx > 0 ? predictions[idx - 1].price : pred.price;
-                    const change = pred.price - prevPrice;
-                    const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
-
-                    return (
-                      <tr key={pred.date} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="py-3 px-4 text-sm text-gray-900 font-medium">
-                          {new Date(pred.date).toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </td>
-                        <td className="py-3 px-4 text-lg font-semibold text-green-700">
-                          ¥{pred.price.toFixed(2)}/kg
-                        </td>
-                        <td className="py-3 px-4">
-                          {idx > 0 && (
-                            <span
-                              className={`inline-flex items-center gap-1 text-sm font-medium ${
-                                change > 0
-                                  ? 'text-red-600'
-                                  : change < 0
-                                  ? 'text-green-600'
-                                  : 'text-gray-600'
-                              }`}
-                            >
-                              {change > 0 ? '↑' : change < 0 ? '↓' : '→'}
-                              {Math.abs(changePercent).toFixed(1)}%
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-
       <div className="bg-white rounded-xl shadow-sm p-6">
         <div className="flex items-start justify-between mb-6">
           <div>
